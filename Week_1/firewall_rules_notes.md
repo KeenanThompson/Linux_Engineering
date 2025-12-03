@@ -1,4 +1,4 @@
-# UFW Firewall Hardening Notes (Ubuntu Security Lab)
+# UFW Firewall Hardening Notes
 
 ## Overview
 UFW (Uncomplicated Firewall) is being used to enforce a host-based firewall with a default-deny stance.  
