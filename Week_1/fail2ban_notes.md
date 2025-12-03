@@ -1,4 +1,4 @@
-# Fail2ban Hardening Notes — SSH Protection (Ubuntu Security Lab)
+# Fail2ban Hardening Notes — SSH Protection
 
 ## Overview
 Fail2ban is configured to protect SSH from brute-force attempts. The default Fail2ban configuration was replaced with a hardened jail.local to reduce retries, extend ban times, and integrate bans with UFW.
