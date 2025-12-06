@@ -1,4 +1,4 @@
-Week 1 – Host Baseline, Hardening, and Detection Controls
+Linux Host Baseline, Hardening, and Detection Controls
 
 Objective
 
@@ -6,8 +6,7 @@ Objective
   covering authentication, password policy, filesystem protections, network access,
   intrusion prevention, kernel behavior, and host-level detection. All configurations
   were applied on a live Ubuntu system and validated through command output, log review,
-  functional testing, and a pre/post Lynis audit. This week establishes a hardened
-  foundation for Week 2 vulnerability management and subsequent engineering work.
+  functional testing, and a pre/post Lynis audit.
 
 Scope of Work
 
@@ -377,8 +376,7 @@ Validation Summary
 
 Result
 
-  Week 1 produced a hardened Linux host with controlled authentication pathways, strong
+  Successfully produced a hardened Linux host with controlled authentication pathways, strong
   password policy, modern hashing (yescrypt), locked-down temporary storage, reduced
   network attack surface, active brute-force prevention, kernel-level protections, and
-  comprehensive host-level detection. This platform is now ready for Week 2:
-  vulnerability scanning, remediation, and validation.
+  comprehensive host-level detection. 
