@@ -1,0 +1,5 @@
+index=linux sourcetype=linux_secure ("Accepted password for" OR "Accepted publickey for")
+| rex "Accepted (?:password|publickey) for (?<user>\S+) from (?<src_ip>\S+)"
+| iplocation src_ip
+| stats count AS successful_logins by Country
+| sort - successful_logins
