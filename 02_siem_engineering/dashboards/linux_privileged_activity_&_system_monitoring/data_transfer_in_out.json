@@ -1,0 +1,6 @@
+index=linux sourcetype=linux_secure ("subsystem request for sftp" OR "Received" OR "Sent")
+| rex "subsystem request for (?<method>\S+)"
+| rex "Received (?<bytes_in>\d+)"
+| rex "Sent (?<bytes_out>\d+)"
+| stats sum(bytes_in) AS total_in sum(bytes_out) AS total_out by user, method, src_ip
+| sort - total_out
