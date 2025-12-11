@@ -1,0 +1,410 @@
+{
+    "title": "Linux Auth Overview",
+    "description": "Linux Authentication Overview - failed/successful logins and brute force visibility",
+    "inputs": {
+        "input_global_timerange": {
+            "options": {
+                "defaultValue": "-24h@h,now",
+                "token": "global_time"
+            },
+            "title": "Global Time Range",
+            "type": "input.timerange"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$global_time.earliest$",
+                        "latest": "$global_time.latest$"
+                    }
+                }
+            }
+        }
+    },
+    "visualizations": {
+        "viz_bruteforce_attempts": {
+            "dataSources": {
+                "primary": "ds_bruteforce_attempts"
+            },
+            "options": {
+                "backgroundColor": "transparent",
+                "majorValue": "> primary | seriesByName(\"bruteforce_windows\") | lastPoint()",
+                "sparklineDisplay": "off"
+            },
+            "title": "Brute Force Attempts (5+ failures / 5 min)",
+            "type": "splunk.singlevalue"
+        },
+        "viz_failed_by_ip": {
+            "dataSources": {
+                "primary": "ds_failed_by_ip"
+            },
+            "options": {
+                "backgroundColor": "#15161A"
+            },
+            "title": "Failed Logins by IP Address",
+            "type": "splunk.table"
+        },
+        "viz_failed_country_map": {
+            "dataSources": {
+                "primary": "ds_failed_by_country"
+            },
+            "options": {
+                "backgroundColor": "#15161A",
+                "featureIdField": "Country",
+                "legendDisplay": "right",
+                "primaryValueField": "failed_logins"
+            },
+            "title": "Failed SSH Logins by Country",
+            "type": "splunk.map"
+        },
+        "viz_failed_country_table": {
+            "dataSources": {
+                "primary": "ds_failed_by_country"
+            },
+            "options": {
+                "backgroundColor": "#15161A"
+            },
+            "title": "Failed SSH Logins by Country (Table)",
+            "type": "splunk.table"
+        },
+        "viz_failed_over_time": {
+            "dataSources": {
+                "primary": "ds_failed_over_time"
+            },
+            "options": {
+                "backgroundColor": "transparent",
+                "legendDisplay": "off",
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Failed SSH Logins Over Time",
+            "type": "splunk.line"
+        },
+        "viz_failed_root_24h": {
+            "dataSources": {
+                "primary": "ds_failed_root_24h"
+            },
+            "options": {
+                "backgroundColor": "transparent",
+                "majorValue": "> primary | seriesByName(\"failed_root\") | lastPoint()",
+                "sparklineDisplay": "off"
+            },
+            "title": "Failed Root Password Attempts (Last 24h)",
+            "type": "splunk.singlevalue"
+        },
+        "viz_failed_user": {
+            "dataSources": {
+                "primary": "ds_failed_by_user"
+            },
+            "options": {
+                "backgroundColor": "#15161A"
+            },
+            "title": "Failed User Login Attempts",
+            "type": "splunk.table"
+        },
+        "viz_success_by_ip": {
+            "dataSources": {
+                "primary": "ds_success_by_ip"
+            },
+            "options": {
+                "backgroundColor": "#15161A"
+            },
+            "title": "Successful Logins by IP Address",
+            "type": "splunk.table"
+        },
+        "viz_success_country_map": {
+            "dataSources": {
+                "primary": "ds_success_by_country"
+            },
+            "options": {
+                "backgroundColor": "#15161A",
+                "featureIdField": "Country",
+                "legendDisplay": "right",
+                "primaryValueField": "successful_logins"
+            },
+            "title": "Successful SSH Logins by Country",
+            "type": "splunk.map"
+        },
+        "viz_success_country_table": {
+            "dataSources": {
+                "primary": "ds_success_by_country"
+            },
+            "options": {
+                "backgroundColor": "#15161A"
+            },
+            "title": "Successful SSH Logins by Country (Table)",
+            "type": "splunk.table"
+        },
+        "viz_success_user": {
+            "dataSources": {
+                "primary": "ds_success_by_user"
+            },
+            "options": {
+                "backgroundColor": "#15161A"
+            },
+            "title": "Successful User Login Attempts",
+            "type": "splunk.table"
+        },
+        "viz_success_vs_failed": {
+            "dataSources": {
+                "primary": "ds_success_vs_failed_over_time"
+            },
+            "options": {
+                "backgroundColor": "transparent",
+                "legendDisplay": "bottom",
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Successful vs Failed Auth Over Time",
+            "type": "splunk.area"
+        },
+        "viz_title": {
+            "options": {
+                "markdown": "# **Linux Auth Overview**\nLinux Authentication Overview - failed/successful logins and brute force visibility"
+            },
+            "type": "splunk.markdown"
+        }
+    },
+    "dataSources": {
+        "ds_bruteforce_attempts": {
+            "name": "Brute force windows",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure \"Failed password for\"\n| rex \"Failed password for(?: invalid user)? (?<user>\\S+) from (?<src_ip>\\S+)\"\n| bucket _time span=5m\n| stats count AS attempts BY _time, src_ip, user\n| where attempts >= 5\n| stats count AS bruteforce_windows",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        },
+        "ds_failed_by_country": {
+            "name": "Failed SSH logins by country",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure \"Failed password for\"\n| rex \"Failed password for(?: invalid user)? (?<user>\\S+) from (?<src_ip>\\S+)\"\n| iplocation src_ip\n| eventstats count AS failed_logins BY Country\n| sort - failed_logins",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        },
+        "ds_failed_by_ip": {
+            "name": "Failed logins by IP",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure \"Failed password for\"\n| rex \"Failed password for(?: invalid user)? (?<user>\\S+) from (?<src_ip>\\S+)\"\n| stats count AS failed_logins BY src_ip\n| sort - failed_logins",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        },
+        "ds_failed_by_user": {
+            "name": "Failed logins by user",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure \"Failed password for\"\n| rex \"Failed password for(?: invalid user)? (?<user>\\S+) from (?<src_ip>\\S+)\"\n| stats count AS attempts BY user\n| sort - attempts",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        },
+        "ds_failed_over_time": {
+            "name": "Failed SSH over time",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure \"Failed password for\"\n| timechart span=15m count AS failed_logins",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        },
+        "ds_failed_root_24h": {
+            "name": "Failed root attempts (24h)",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure \"Failed password for root\"\n| eval failed_root=1\n| stats sum(failed_root) AS failed_root",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        },
+        "ds_success_by_country": {
+            "name": "Successful SSH logins by country",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure (\"Accepted password for\" OR \"Accepted publickey for\")\n| rex \"Accepted (?:password|publickey) for (?<user>\\S+) from (?<src_ip>\\S+)\"\n| iplocation src_ip\n| eventstats count AS successful_logins BY Country\n| sort - successful_logins",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        },
+        "ds_success_by_ip": {
+            "name": "Successful logins by IP",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure (\"Accepted password for\" OR \"Accepted publickey for\")\n| rex \"Accepted (?:password|publickey) for (?<user>\\S+) from (?<src_ip>\\S+)\"\n| stats count AS successful_logins BY src_ip\n| sort - successful_logins",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        },
+        "ds_success_by_user": {
+            "name": "Successful logins by user",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure (\"Accepted password for\" OR \"Accepted publickey for\")\n| rex \"Accepted (?:password|publickey) for (?<user>\\S+) from (?<src_ip>\\S+)\"\n| stats count AS attempts BY user\n| sort - attempts",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        },
+        "ds_success_vs_failed_over_time": {
+            "name": "Success vs failed over time",
+            "options": {
+                "query": "index=linux sourcetype=linux_secure (\"Failed password for\" OR \"Accepted password for\" OR \"Accepted publickey for\")\n| eval outcome = case(like(_raw, \"%Failed password%\"), \"failed\", like(_raw, \"%Accepted password%\"), \"success\", like(_raw, \"%Accepted publickey%\"), \"success\", 1=1, \"other\")\n| timechart span=15m count BY outcome",
+                "queryParameters": {}
+            },
+            "type": "ds.search"
+        }
+    },
+    "layout": {
+        "globalInputs": [
+            "input_global_timerange"
+        ],
+        "layoutDefinitions": {
+            "layout_1": {
+                "options": {
+                    "display": "auto",
+                    "height": 900,
+                    "width": 1440
+                },
+                "structure": [
+                    {
+                        "item": "viz_title",
+                        "position": {
+                            "h": 40,
+                            "w": 800,
+                            "x": 20,
+                            "y": 10
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_failed_root_24h",
+                        "position": {
+                            "h": 80,
+                            "w": 220,
+                            "x": 20,
+                            "y": 60
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_bruteforce_attempts",
+                        "position": {
+                            "h": 80,
+                            "w": 220,
+                            "x": 260,
+                            "y": 60
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_success_user",
+                        "position": {
+                            "h": 200,
+                            "w": 320,
+                            "x": 500,
+                            "y": 60
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_failed_user",
+                        "position": {
+                            "h": 200,
+                            "w": 320,
+                            "x": 840,
+                            "y": 60
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_failed_over_time",
+                        "position": {
+                            "h": 200,
+                            "w": 440,
+                            "x": 20,
+                            "y": 160
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_success_by_ip",
+                        "position": {
+                            "h": 200,
+                            "w": 320,
+                            "x": 500,
+                            "y": 270
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_failed_by_ip",
+                        "position": {
+                            "h": 200,
+                            "w": 320,
+                            "x": 840,
+                            "y": 270
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_success_vs_failed",
+                        "position": {
+                            "h": 220,
+                            "w": 440,
+                            "x": 20,
+                            "y": 380
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_success_country_map",
+                        "position": {
+                            "h": 260,
+                            "w": 440,
+                            "x": 500,
+                            "y": 480
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_failed_country_map",
+                        "position": {
+                            "h": 260,
+                            "w": 440,
+                            "x": 960,
+                            "y": 480
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_success_country_table",
+                        "position": {
+                            "h": 180,
+                            "w": 440,
+                            "x": 500,
+                            "y": 750
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_failed_country_table",
+                        "position": {
+                            "h": 180,
+                            "w": 440,
+                            "x": 960,
+                            "y": 750
+                        },
+                        "type": "block"
+                    }
+                ],
+                "type": "absolute"
+            }
+        },
+        "options": {
+            "showTitleAndDescription": false
+        },
+        "tabs": {
+            "items": [
+                {
+                    "label": "Linux Auth Overview",
+                    "layoutId": "layout_1"
+                }
+            ]
+        }
+    }
+}
