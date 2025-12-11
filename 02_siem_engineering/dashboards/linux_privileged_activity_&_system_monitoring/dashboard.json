@@ -1,0 +1,250 @@
+{
+  "title": "Linux Privileged Activity & System Monitoring",
+  "description": "Linux Privileged Activity & System Monitoring - sudo, user mgmt, auditd and updates",
+  "inputs": {
+    "input_global_timerange": {
+      "options": {
+        "defaultValue": "-24h@h,now",
+        "token": "global_time"
+      },
+      "title": "Global Time Range",
+      "type": "input.timerange"
+    }
+  },
+  "defaults": {
+    "dataSources": {
+      "ds.search": {
+        "options": {
+          "queryParameters": {
+            "earliest": "$global_time.earliest$",
+            "latest": "$global_time.latest$"
+          }
+        }
+      }
+    }
+  },
+  "visualizations": {
+    "viz_title": {
+      "options": {
+        "markdown": "# **Linux Privileged Activity & System Monitoring**\nLinux Privileged Activity & System Monitoring - sudo, user mgmt, auditd and updates"
+      },
+      "type": "splunk.markdown"
+    },
+
+    "viz_patch_health": {
+      "dataSources": {
+        "primary": "ds_patch_health"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "majorValue": "> primary | seriesByName('pending_updates') | lastPoint()",
+        "sparklineDisplay": "off"
+      },
+      "title": "System Update / Patch Health (pending updates)",
+      "type": "splunk.singlevalue"
+    },
+
+    "viz_sudo_usage_over_time": {
+      "dataSources": {
+        "primary": "ds_sudo_usage_over_time"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "legendDisplay": "off",
+        "xAxisTitleVisibility": "hide",
+        "yAxisTitleVisibility": "hide"
+      },
+      "title": "sudo Usage Over Time",
+      "type": "splunk.line"
+    },
+
+    "viz_sudo_top_commands": {
+      "dataSources": {
+        "primary": "ds_sudo_top_commands"
+      },
+      "options": {
+        "backgroundColor": "#15161A"
+      },
+      "title": "Top sudo Users and Commands",
+      "type": "splunk.table"
+    },
+
+    "viz_user_mgmt_events": {
+      "dataSources": {
+        "primary": "ds_user_mgmt_events"
+      },
+      "options": {
+        "backgroundColor": "#15161A"
+      },
+      "title": "User Add/Delete/Group Creation Events",
+      "type": "splunk.table"
+    },
+
+    "viz_auditd_exec": {
+      "dataSources": {
+        "primary": "ds_auditd_exec"
+      },
+      "options": {
+        "backgroundColor": "#15161A"
+      },
+      "title": "Monitored Process Execution (auditd)",
+      "type": "splunk.table"
+    },
+
+    "viz_sensitive_file_mods": {
+      "dataSources": {
+        "primary": "ds_sensitive_file_mods"
+      },
+      "options": {
+        "backgroundColor": "#15161A"
+      },
+      "title": "Sensitive File Modifications (auditd)",
+      "type": "splunk.table"
+    },
+
+    "viz_suspicious_exec": {
+      "dataSources": {
+        "primary": "ds_suspicious_exec"
+      },
+      "options": {
+        "backgroundColor": "#15161A"
+      },
+      "title": "Suspicious auditd execve on Sensitive Binaries",
+      "type": "splunk.table"
+    }
+  },
+
+  "dataSources": {
+    "ds_patch_health": {
+      "name": "Patch health pending updates",
+      "options": {
+        "query": "index=linux sourcetype=linux_secure OR sourcetype=syslog\n| eval pending_updates=0\n| stats max(pending_updates) AS pending_updates",
+        "queryParameters": {}
+      },
+      "type": "ds.search"
+    },
+
+    "ds_sudo_usage_over_time": {
+      "name": "sudo usage over time",
+      "options": {
+        "query": "index=linux sourcetype=linux_secure \"sudo:\"\n| timechart span=15m count AS sudo_commands",
+        "queryParameters": {}
+      },
+      "type": "ds.search"
+    },
+
+    "ds_sudo_top_commands": {
+      "name": "Top sudo commands",
+      "options": {
+        "query": "index=linux sourcetype=linux_secure \"sudo:\"\n| rex \"sudo:\\s+(?<user>\\S+)\\s*:(?: TTY=\\S+ ;)? PWD=\\S+ ; COMMAND=(?<command>.+)\"\n| stats count AS count BY user, command\n| sort -count\n| head 20",
+        "queryParameters": {}
+      },
+      "type": "ds.search"
+    },
+
+    "ds_user_mgmt_events": {
+      "name": "User / group management events",
+      "options": {
+        "query": "index=linux sourcetype=linux_secure (\"useradd[\" OR \"groupadd[\" OR \"usermod[\" OR \"groupdel[\" OR \"userdel[\")\n| rex \"useradd\\[\\d+\\]: new user: name=(?<new_user>\\S+)\"\n| rex \"groupadd\\[\\d+\\]: new group: name=(?<new_group>\\S+)\"\n| rex \"usermod\\[\\d+\\]: change user '(?<mod_user>\\S+)'\"\n| rex \"userdel\\[\\d+\\]: delete user '(?<del_user>\\S+)'\"\n| eval event_type=case(isnotnull(new_user), \"User Created\", isnotnull(new_group), \"Group Created\", isnotnull(mod_user), \"User Modified\", isnotnull(del_user), \"User Deleted\", 1=1, \"Other\")\n| table _time event_type new_user new_group mod_user del_user host",
+        "queryParameters": {}
+      },
+      "type": "ds.search"
+    },
+
+    "ds_auditd_exec": {
+      "name": "auditd execve processes",
+      "options": {
+        "query": "index=linux sourcetype=auditd type=EXECVE\n| stats count AS exec_count BY _time, exe, auid, uid\n| sort -_time",
+        "queryParameters": {}
+      },
+      "type": "ds.search"
+    },
+
+    "ds_sensitive_file_mods": {
+      "name": "Sensitive file changes",
+      "options": {
+        "query": "index=linux sourcetype=auditd (\"/etc/shadow\" OR \"/etc/passwd\" OR \"/etc/sudoers\" OR \"/etc/ssh/sshd_config\")\n| rex field=_raw \"name=\\\"(?<file>[^\\\"]+)\\\"\"\n| stats count AS changes, values(auid) AS user_ids, values(exe) AS executors BY file, host\n| sort -changes",
+        "queryParameters": {}
+      },
+      "type": "ds.search"
+    },
+
+    "ds_suspicious_exec": {
+      "name": "Suspicious execve",
+      "options": {
+        "query": "index=linux sourcetype=auditd type=EXECVE\n| search exe IN (\"/usr/bin/su\", \"/usr/bin/passwd\", \"/bin/su\", \"/usr/bin/sudo\")\n| stats count AS exec_count BY _time, exe, auid, uid, host\n| sort -_time",
+        "queryParameters": {}
+      },
+      "type": "ds.search"
+    }
+  },
+
+  "layout": {
+    "globalInputs": [
+      "input_global_timerange"
+    ],
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "display": "auto",
+          "height": 900,
+          "width": 1440
+        },
+        "structure": [
+          {
+            "item": "viz_title",
+            "position": { "h": 40, "w": 800, "x": 20, "y": 10 },
+            "type": "block"
+          },
+          {
+            "item": "viz_patch_health",
+            "position": { "h": 80, "w": 220, "x": 20, "y": 60 },
+            "type": "block"
+          },
+          {
+            "item": "viz_sudo_usage_over_time",
+            "position": { "h": 220, "w": 420, "x": 260, "y": 60 },
+            "type": "block"
+          },
+          {
+            "item": "viz_sudo_top_commands",
+            "position": { "h": 260, "w": 420, "x": 700, "y": 60 },
+            "type": "block"
+          },
+          {
+            "item": "viz_user_mgmt_events",
+            "position": { "h": 260, "w": 420, "x": 20, "y": 300 },
+            "type": "block"
+          },
+          {
+            "item": "viz_auditd_exec",
+            "position": { "h": 260, "w": 420, "x": 460, "y": 300 },
+            "type": "block"
+          },
+          {
+            "item": "viz_sensitive_file_mods",
+            "position": { "h": 260, "w": 420, "x": 900, "y": 300 },
+            "type": "block"
+          },
+          {
+            "item": "viz_suspicious_exec",
+            "position": { "h": 220, "w": 430, "x": 20, "y": 580 },
+            "type": "block"
+          }
+        ]
+      }
+    },
+    "options": {
+      "showTitleAndDescription": false
+    },
+    "tabs": {
+      "items": [
+        {
+          "label": "Linux Privileged Activity",
+          "layoutId": "layout_1"
+        }
+      ]
+    }
+  }
+}
