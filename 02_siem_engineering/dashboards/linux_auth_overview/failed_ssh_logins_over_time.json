@@ -1,0 +1,3 @@
+index=linux sourcetype=linux_secure "Failed password for"
+| bucket _time span=15m
+| stats count AS failed_logins BY _time
