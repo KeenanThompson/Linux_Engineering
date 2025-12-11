@@ -1,0 +1,2 @@
+index=linux sourcetype=linux_secure "sudo:" 
+| timechart span=15m count AS sudo_commands
