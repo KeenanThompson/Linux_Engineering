@@ -100,14 +100,4 @@ Current rules:
 4. `linux_user_mgmt_changes.md` – User / group creation, modification, deletion.
 5. `linux_sensitive_file_mods.md` – Modifications to `/etc/shadow`, `/etc/passwd`, `/etc/sudoers`, `/etc/ssh/sshd_config`.
 
----
 
-## Status
-
-- [x] Folder structure defined
-- [x] Core SPL for auth and privileged activity documented
-- [ ] Dashboards exported as JSON and checked into `dashboards/`
-- [ ] Detection rules wired into Splunk as saved searches/correlation searches
-- [ ] Sample screenshots captured for portfolio use
-
-As telemetry grows (more events over time), these dashboards and detections will start surfacing useful patterns without needing to change the structure.
